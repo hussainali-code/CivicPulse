@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Response, status
 
 from app.schemas import StatsResponse
-from app.services.complaint_service import ComplaintService, get_complaint_service
+from app.services.stats_service import StatsService, get_stats_service
 
 router = APIRouter()
 
@@ -14,7 +14,7 @@ router = APIRouter()
 )
 async def get_stats(
     response: Response,
-    service: ComplaintService = Depends(get_complaint_service),
+    service: StatsService = Depends(get_stats_service),
 ) -> StatsResponse:
     stats_data, cache_status = await service.get_stats()
     response.headers["X-Cache"] = cache_status
