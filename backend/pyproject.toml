@@ -49,3 +49,5 @@ target-version = "py312"
 python_version = "3.12"
 strict = true
 ignore_missing_imports = true
+mypy_path = "."
+explicit_package_bases = true
