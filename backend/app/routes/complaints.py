@@ -3,7 +3,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.models import Category, Priority, Status
-from app.providers.triage.base import TriageProvider, get_triage_provider
+from app.providers.triage.base import TriageProvider
+from app.providers.triage.factory import get_triage_provider
 from app.schemas import (
     ComplaintCreate,
     ComplaintListResponse,
