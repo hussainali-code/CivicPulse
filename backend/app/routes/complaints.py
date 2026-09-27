@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.models import Category, Priority, Status
+from app.providers.rate_limiter import rate_limit_dependency
 from app.providers.triage.base import TriageProvider
 from app.providers.triage.factory import get_triage_provider
 from app.schemas import (
@@ -26,6 +27,7 @@ router = APIRouter()
     response_model=ComplaintResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Submit a new citizen complaint",
+    dependencies=[Depends(rate_limit_dependency)],
 )
 async def create_complaint(
     payload: ComplaintCreate,

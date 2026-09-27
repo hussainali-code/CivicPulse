@@ -15,6 +15,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_
 from app.config import get_settings
 from app.db import check_db_health, engine
 from app.providers.cache import check_redis_health, close_redis_client
+from app.providers.rate_limiter import RateLimitExceeded
 from app.routes import complaints, meta, stats
 
 # Prometheus Metrics Definitions
@@ -209,6 +210,19 @@ async def validation_exception_handler(
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={"detail": field_errors},
+    )
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_exceeded_handler(
+    request: Request,
+    exc: RateLimitExceeded,
+) -> JSONResponse:
+    """Return 429 Too Many Requests with Retry-After header upon rate limit breach."""
+    return JSONResponse(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        content={"detail": exc.detail},
+        headers={"Retry-After": str(exc.retry_after)},
     )
 
 
