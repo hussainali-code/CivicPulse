@@ -67,3 +67,4 @@ Thumbs.db
 scratch/
 tmp/
 MASTER_PLAN*.md
+uv.lock
