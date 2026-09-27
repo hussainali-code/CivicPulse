@@ -19,38 +19,6 @@ class TriageProvider(Protocol):
         ...
 
 
-class DefaultSimulatedTriage:
-    name: str = "simulated"
+from app.providers.triage.factory import get_triage_provider  # noqa: E402
 
-    async def triage(self, text: str, location: str) -> TriageResult:
-        lower = text.lower()
-        if any(w in lower for w in ["water", "pipe", "leak", "main"]):
-            cat = Category.WATER
-            prio = Priority.HIGH if any(w in lower for w in ["burst", "flood", "flooding"]) else Priority.NORMAL
-        elif any(w in lower for w in ["electric", "power", "wire", "voltage", "blackout"]):
-            cat = Category.ELECTRICITY
-            prio = Priority.HIGH if any(w in lower for w in ["spark", "fire", "shock"]) else Priority.NORMAL
-        elif any(w in lower for w in ["road", "pothole", "asphalt", "crater"]):
-            cat = Category.ROADS
-            prio = Priority.NORMAL
-        elif any(w in lower for w in ["light", "lamp", "dark", "pole"]):
-            cat = Category.STREETLIGHTS
-            prio = Priority.LOW
-        elif any(w in lower for w in ["trash", "garbage", "waste", "drain", "sewer", "gutters"]):
-            cat = Category.SANITATION
-            prio = Priority.NORMAL
-        else:
-            cat = Category.OTHER
-            prio = Priority.NORMAL
-
-        summary = (text[:137] + "...") if len(text) > 140 else text
-        return TriageResult(
-            category=cat,
-            priority=prio,
-            summary=summary,
-            confidence=0.85,
-        )
-
-
-def get_triage_provider() -> TriageProvider:
-    return DefaultSimulatedTriage()
+__all__ = ["TriageResult", "TriageProvider", "get_triage_provider"]
