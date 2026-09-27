@@ -7,6 +7,9 @@ Validates that required files, directory structure, and sanity constraints exist
 import sys
 from pathlib import Path
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 REQUIRED_PATHS = [
     ".github/workflows/ci.yml",
     ".github/workflows/cd.yml",

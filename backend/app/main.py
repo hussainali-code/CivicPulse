@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Awaitable, Callable, Dict, List
 
 from fastapi import FastAPI, Request, Response, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
@@ -14,6 +15,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_
 from app.config import get_settings
 from app.db import check_db_health, engine
 from app.providers.cache import check_redis_health, close_redis_client
+from app.routes import complaints, meta, stats
 
 # Prometheus Metrics Definitions
 REQUEST_COUNT = Counter(
@@ -188,3 +190,29 @@ async def metrics() -> Response:
         content=generate_latest(),
         media_type=CONTENT_TYPE_LATEST,
     )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(
+    request: Request,
+    exc: RequestValidationError,
+) -> JSONResponse:
+    """Transform FastAPI 422 validation errors into 400 Bad Request with field-level details."""
+    field_errors = []
+    for err in exc.errors():
+        loc = err.get("loc", [])
+        field_name = str(loc[-1]) if loc else "body"
+        field_errors.append({
+            "field": field_name,
+            "msg": err.get("msg", "Invalid value"),
+        })
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": field_errors},
+    )
+
+
+# API Routers
+app.include_router(complaints.router, prefix="/api", tags=["Complaints"])
+app.include_router(meta.router, prefix="/api", tags=["Meta"])
+app.include_router(stats.router, prefix="/api", tags=["Stats"])
