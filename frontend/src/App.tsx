@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { BarChart3, LayoutDashboard, PlusCircle, ShieldCheck } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { DashboardPage } from './pages/DashboardPage';
+import { StatsPage } from './pages/StatsPage';
 import { SubmitPage } from './pages/SubmitPage';
 
 export const App: React.FC = () => {
@@ -61,26 +63,8 @@ export const App: React.FC = () => {
 
         <main style={{ flex: 1, paddingBottom: '3rem' }}>
           {activeTab === 'submit' && <SubmitPage />}
-          {activeTab === 'dashboard' && (
-            <div style={{ maxWidth: '1000px', margin: '3rem auto', textAlign: 'center', padding: '0 1rem' }}>
-              <div className="card">
-                <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Staff Triage Dashboard</h2>
-                <p style={{ color: 'var(--text-secondary)' }}>
-                  Interactive complaint status management, filtering, and state machine controls.
-                </p>
-              </div>
-            </div>
-          )}
-          {activeTab === 'stats' && (
-            <div style={{ maxWidth: '1000px', margin: '3rem auto', textAlign: 'center', padding: '0 1rem' }}>
-              <div className="card">
-                <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Platform Metrics & Cache Performance</h2>
-                <p style={{ color: 'var(--text-secondary)' }}>
-                  Aggregated counts by category, priority, and Redis cache hit/miss status.
-                </p>
-              </div>
-            </div>
-          )}
+          {activeTab === 'dashboard' && <DashboardPage />}
+          {activeTab === 'stats' && <StatsPage />}
         </main>
       </div>
     </ErrorBoundary>
