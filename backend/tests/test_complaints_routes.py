@@ -230,6 +230,8 @@ async def test_get_meta_providers_200_ok(client: AsyncClient, mock_service):
 @pytest.mark.asyncio
 async def test_get_stats_200_ok_with_cache_header(client: AsyncClient, mock_service):
     """GET /api/stats returns aggregates and sets X-Cache header."""
+    from app.services.stats_service import get_stats_service
+
     mock_service.get_stats.return_value = (
         {
             "by_category": {"water": 5, "electricity": 3},
@@ -239,7 +241,7 @@ async def test_get_stats_200_ok_with_cache_header(client: AsyncClient, mock_serv
         },
         "MISS",
     )
-    app.dependency_overrides[get_complaint_service] = lambda: mock_service
+    app.dependency_overrides[get_stats_service] = lambda: mock_service
 
     try:
         response = await client.get("/api/stats")
