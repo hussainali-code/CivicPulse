@@ -20,8 +20,8 @@ RUN npm run build
 # ---------------------------------------------------------
 FROM nginx:1.27-alpine AS runner
 
-# Install curl for healthcheck validation
-RUN apk add --no-cache curl
+# Upgrade base system packages for security patches and install curl for healthcheck
+RUN apk update && apk upgrade --no-cache && apk add --no-cache curl
 
 # Remove default nginx static assets
 RUN rm -rf /usr/share/nginx/html/*
