@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+      - 'v*'
+
+permissions: {}
+
+jobs:
+  release:
+    name: Publish Release & Container Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push semver container images
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          TAG=${{ github.ref_name }}
+          for SVC in backend frontend; do
+            IMAGE="ghcr.io/$OWNER/civicpulse-$SVC"
+            echo "Building and tagging $IMAGE:$TAG..."
+            docker build $SVC/ -t $IMAGE:$TAG -t $IMAGE:latest
+            docker push $IMAGE:$TAG
+            docker push $IMAGE:latest
+          done
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          draft: false
+          prerelease: false
