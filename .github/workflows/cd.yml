@@ -129,6 +129,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -150,19 +151,13 @@ jobs:
           kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
           kubectl patch -n kube-system deployment metrics-server --type='json' -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
 
-      - name: Create Kubernetes Secret
-        run: |
-          kubectl create namespace civicpulse
-          kubectl create secret generic civicpulse-secrets \
-            --from-literal=DB_PASSWORD="production_db_password" \
-            --from-literal=LLM_API_KEY="${{ secrets.GROQ_API_KEY || 'simulated_ci_token' }}" \
-            -n civicpulse
-
       - name: Update Kustomize image tags to immutable SHA
         run: |
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           cd k8s/overlays/prod
           kustomize edit set image \
+            ghcr.io/hussainali-code/civicpulse-backend=ghcr.io/$OWNER/civicpulse-backend:${{ github.sha }} \
+            ghcr.io/hussainali-code/civicpulse-frontend=ghcr.io/$OWNER/civicpulse-frontend:${{ github.sha }} \
             civicpulse-backend=ghcr.io/$OWNER/civicpulse-backend:${{ github.sha }} \
             civicpulse-frontend=ghcr.io/$OWNER/civicpulse-frontend:${{ github.sha }}
           cat kustomization.yaml
@@ -170,6 +165,26 @@ jobs:
       - name: Deploy manifests to cluster
         run: |
           kustomize build k8s/overlays/prod | kubectl apply -f -
+
+      - name: Inject Kubernetes Secrets & Configure ImagePullSecrets
+        run: |
+          kubectl create secret generic civicpulse-secret \
+            --from-literal=POSTGRES_USER="civicpulse_user" \
+            --from-literal=POSTGRES_PASSWORD="civicpulse_password" \
+            --from-literal=LLM_API_KEY="${{ secrets.GROQ_API_KEY || 'simulated_ci_token' }}" \
+            --from-literal=GROQ_API_KEY="${{ secrets.GROQ_API_KEY || 'simulated_ci_token' }}" \
+            --from-literal=SECRET_KEY="production_jwt_secret_key_civicpulse_2026" \
+            -n civicpulse \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          kubectl create secret docker-registry ghcr-secret \
+            --docker-server=ghcr.io \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.GITHUB_TOKEN }} \
+            -n civicpulse \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          kubectl patch serviceaccount default -n civicpulse -p '{"imagePullSecrets": [{"name": "ghcr-secret"}]}'
 
       - name: Await backend deployment rollout
         run: |
