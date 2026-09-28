@@ -27,10 +27,12 @@ jobs:
         run: pip install ruff mypy && pip install -e "backend/[dev]"
 
       - name: Run Ruff linter on backend
-        run: ruff check backend/
+        working-directory: backend
+        run: ruff check .
 
       - name: Run Mypy type checker on backend
-        run: mypy backend/app/
+        working-directory: backend
+        run: mypy app/
 
       - name: Set up Node.js 22
         uses: actions/setup-node@v4
