@@ -188,6 +188,14 @@ jobs:
             -n civicpulse \
             --dry-run=client -o yaml | kubectl apply -f -
 
+          # Ensure default serviceaccount exists before patching
+          for i in $(seq 1 10); do
+            if kubectl get serviceaccount default -n civicpulse >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+          kubectl create serviceaccount default -n civicpulse --dry-run=client -o yaml | kubectl apply -f -
           kubectl patch serviceaccount default -n civicpulse -p '{"imagePullSecrets": [{"name": "ghcr-secret"}]}'
 
       - name: Await backend deployment rollout
