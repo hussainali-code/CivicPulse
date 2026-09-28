@@ -1,6 +1,7 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
+
 import pytest
 from httpx import AsyncClient
 
@@ -92,8 +93,8 @@ async def test_post_complaints_rate_limiting_integration(client: AsyncClient):
         ai_summary="Water main leak",
         triaged_by="simulated",
         triage_latency_ms=10,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     mock_service.create.return_value = sample_complaint
 

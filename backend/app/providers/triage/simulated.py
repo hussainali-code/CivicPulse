@@ -1,6 +1,5 @@
 import hashlib
 import random
-from typing import Optional
 
 from app.config import get_settings
 from app.providers.triage.base import TriageResult
@@ -17,8 +16,8 @@ class SimulatedTriage:
 
     def __init__(
         self,
-        failure_injection: Optional[bool] = None,
-        malformed_injection: Optional[bool] = None,
+        failure_injection: bool | None = None,
+        malformed_injection: bool | None = None,
     ):
         settings = get_settings()
         self.failure_injection = (
@@ -37,7 +36,7 @@ class SimulatedTriage:
             raise ValueError("Simulated malformed output injection triggered")
 
         # 2. Derive deterministic seed from content hash
-        content_hash = hashlib.sha256(f"{text}:{location}".encode("utf-8")).hexdigest()
+        content_hash = hashlib.sha256(f"{text}:{location}".encode()).hexdigest()
         seed_val = int(content_hash[:8], 16)
         rng = random.Random(seed_val)
 

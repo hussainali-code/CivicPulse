@@ -1,6 +1,8 @@
 import json
 import logging
-from typing import Any, AsyncGenerator, Dict, Optional, Tuple
+from collections.abc import AsyncGenerator
+from typing import Any
+
 import redis.asyncio as aioredis
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,9 +20,9 @@ STATS_TTL = 30  # 30 seconds TTL per technical specification
 class StatsService:
     def __init__(
         self,
-        repo: Optional[ComplaintRepository] = None,
-        redis_client: Optional[aioredis.Redis] = None,
-        session: Optional[AsyncSession] = None,
+        repo: ComplaintRepository | None = None,
+        redis_client: aioredis.Redis | None = None,
+        session: AsyncSession | None = None,
     ):
         self.repo = repo or ComplaintRepository()
         self.redis_client = redis_client
@@ -28,9 +30,9 @@ class StatsService:
 
     async def get_stats(
         self,
-        redis_client: Optional[aioredis.Redis] = None,
-        session: Optional[AsyncSession] = None
-    ) -> Tuple[Dict[str, Any], str]:
+        redis_client: aioredis.Redis | None = None,
+        session: AsyncSession | None = None
+    ) -> tuple[dict[str, Any], str]:
         """
         Retrieves complaint statistics with Redis read-through caching.
         Returns: (stats_dict, 'HIT' | 'MISS')
@@ -62,7 +64,7 @@ class StatsService:
 
         return stats, "MISS"
 
-    async def invalidate_stats(self, redis_client: Optional[aioredis.Redis] = None) -> None:
+    async def invalidate_stats(self, redis_client: aioredis.Redis | None = None) -> None:
         """Invalidate the cached statistics key in Redis."""
         r_client = redis_client if redis_client is not None else self.redis_client
         if r_client is not None:

@@ -1,11 +1,9 @@
 import re
-from typing import List, Tuple
 
 from app.models import Category, Priority
 from app.providers.triage.base import TriageResult
 
-
-CATEGORY_KEYWORDS: List[Tuple[Category, List[str]]] = [
+CATEGORY_KEYWORDS: list[tuple[Category, list[str]]] = [
     (
         Category.WATER,
         [

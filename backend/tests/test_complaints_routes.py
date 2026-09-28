@@ -1,6 +1,7 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
+
 import pytest
 from httpx import AsyncClient
 
@@ -37,7 +38,7 @@ def mock_provider():
 @pytest.fixture
 def sample_complaint():
     cid = uuid.uuid4()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return Complaint(
         id=cid,
         text="Water pipe burst on 7th Avenue flooding the street",
