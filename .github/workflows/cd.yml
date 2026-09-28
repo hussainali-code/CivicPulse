@@ -153,7 +153,7 @@ jobs:
 
       - name: Install VPA CRDs on KinD
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/kubernetes/autoscaler/master/vertical-pod-autoscaler/deploy/vpa-v1-crd.yaml
+          kubectl apply -f k8s/crds/vpa-v1-crd-gen.yaml
 
       - name: Update Kustomize image tags to immutable SHA
         run: |
