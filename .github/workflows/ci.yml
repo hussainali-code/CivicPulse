@@ -24,7 +24,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install Python linting tools
-        run: pip install ruff mypy
+        run: pip install ruff mypy && pip install -e "backend/[dev]"
 
       - name: Run Ruff linter on backend
         run: ruff check backend/
@@ -91,13 +91,15 @@ jobs:
           python-version: '3.12'
 
       - name: Install backend and test dependencies
-        run: pip install -e backend/[dev]
+        run: pip install -e "backend/[dev]"
 
       - name: Run database migrations with Alembic
-        run: alembic -c backend/alembic.ini upgrade head
+        working-directory: backend
+        run: alembic upgrade head
 
       - name: Run Pytest with strict coverage check (>=65%)
-        run: pytest backend/tests/ --cov=backend/app --cov-fail-under=65 --cov-report=xml --cov-report=term-missing
+        working-directory: backend
+        run: pytest --cov-fail-under=65 --cov-report=xml --cov-report=term-missing
 
   test-frontend:
     name: Frontend Component Tests
