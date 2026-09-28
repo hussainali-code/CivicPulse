@@ -174,7 +174,7 @@ jobs:
           docker load < frontend-image.tar.gz
 
       - name: Run Trivy vulnerability scan on backend image
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: civicpulse-backend:ci
           format: 'table'
@@ -184,7 +184,7 @@ jobs:
           severity: 'HIGH,CRITICAL'
 
       - name: Run Trivy vulnerability scan on frontend image
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: civicpulse-frontend:ci
           format: 'table'
