@@ -76,7 +76,7 @@ class ComplaintService:
             category=triage_result.category,
             priority=triage_result.priority,
             ai_summary=triage_result.summary,
-            triaged_by=triage_provider.name,
+            triaged_by=getattr(triage_provider, "last_triaged_by", triage_provider.name),
             triage_latency_ms=latency_ms,
         )
 
