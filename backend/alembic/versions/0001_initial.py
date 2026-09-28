@@ -20,22 +20,29 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # 1. Create Enums
+    # 1. Create Enums explicitly with checkfirst=True
+    # NOTE: create_type=False is set on the column definitions below so that
+    # SQLAlchemy's DDL before_create event does NOT fire a bare CREATE TYPE
+    # (without IF NOT EXISTS) when op.create_table runs. We manage the enum
+    # lifecycle here explicitly.
     category_enum = postgresql.ENUM(
         'water', 'electricity', 'sanitation', 'roads', 'streetlights', 'other',
-        name='category_enum'
+        name='category_enum',
+        create_type=False
     )
     category_enum.create(op.get_bind(), checkfirst=True)
 
     priority_enum = postgresql.ENUM(
         'high', 'normal', 'low',
-        name='priority_enum'
+        name='priority_enum',
+        create_type=False
     )
     priority_enum.create(op.get_bind(), checkfirst=True)
 
     status_enum = postgresql.ENUM(
         'open', 'in_progress', 'resolved', 'rejected',
-        name='status_enum'
+        name='status_enum',
+        create_type=False
     )
     status_enum.create(op.get_bind(), checkfirst=True)
 
