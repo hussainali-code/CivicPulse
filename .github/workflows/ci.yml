@@ -163,6 +163,9 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download container images
         uses: actions/download-artifact@v4
         with:
@@ -182,6 +185,7 @@ jobs:
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'HIGH,CRITICAL'
+          trivyignores: '.trivyignore'
 
       - name: Run Trivy vulnerability scan on frontend image
         uses: aquasecurity/trivy-action@v0.36.0
@@ -192,6 +196,7 @@ jobs:
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'HIGH,CRITICAL'
+          trivyignores: '.trivyignore'
 
   manifests:
     name: Kubernetes Manifest Validation

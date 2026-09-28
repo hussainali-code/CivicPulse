@@ -1,0 +1,15 @@
+# Trivy vulnerability ignore list
+# These CVEs affect starlette < 1.3.1, but upgrading starlette requires
+# upgrading FastAPI beyond 0.115.x (our pinned version). These are accepted
+# risks tracked for future dependency updates.
+#
+# See: https://github.com/hussainali-code/CivicPulse/issues (tracked)
+
+# starlette: DoS via Range header merging (fixed in 0.49.1)
+CVE-2025-62727
+
+# starlette: SSRF via UNC paths in StaticFiles (fixed in 1.1.0)
+CVE-2026-48818
+
+# starlette: form() limits silently ignored — DoS (fixed in 1.3.1)
+CVE-2026-54283
