@@ -1,0 +1,10 @@
+# CI override: replaces build: with pre-built :ci image references.
+# Usage: docker compose -f compose.yaml -f compose.ci.override.yaml up -d
+services:
+  backend:
+    build: !reset null
+    image: civicpulse-backend:ci
+
+  frontend:
+    build: !reset null
+    image: civicpulse-frontend:ci

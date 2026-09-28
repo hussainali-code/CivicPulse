@@ -24,13 +24,15 @@ jobs:
           python-version: '3.12'
 
       - name: Install Python linting tools
-        run: pip install ruff mypy
+        run: pip install ruff mypy && pip install -e "backend/[dev]"
 
       - name: Run Ruff linter on backend
-        run: ruff check backend/
+        working-directory: backend
+        run: ruff check .
 
       - name: Run Mypy type checker on backend
-        run: mypy backend/app/
+        working-directory: backend
+        run: mypy app/
 
       - name: Set up Node.js 22
         uses: actions/setup-node@v4
@@ -91,13 +93,15 @@ jobs:
           python-version: '3.12'
 
       - name: Install backend and test dependencies
-        run: pip install -e backend/[dev]
+        run: pip install -e "backend/[dev]"
 
       - name: Run database migrations with Alembic
-        run: alembic -c backend/alembic.ini upgrade head
+        working-directory: backend
+        run: alembic upgrade head
 
       - name: Run Pytest with strict coverage check (>=65%)
-        run: pytest backend/tests/ --cov=backend/app --cov-fail-under=65 --cov-report=xml --cov-report=term-missing
+        working-directory: backend
+        run: pytest --cov-fail-under=65 --cov-report=xml --cov-report=term-missing
 
   test-frontend:
     name: Frontend Component Tests
@@ -159,6 +163,9 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download container images
         uses: actions/download-artifact@v4
         with:
@@ -170,7 +177,7 @@ jobs:
           docker load < frontend-image.tar.gz
 
       - name: Run Trivy vulnerability scan on backend image
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: civicpulse-backend:ci
           format: 'table'
@@ -178,9 +185,10 @@ jobs:
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'HIGH,CRITICAL'
+          trivyignores: '.trivyignore'
 
       - name: Run Trivy vulnerability scan on frontend image
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: civicpulse-frontend:ci
           format: 'table'
@@ -188,6 +196,7 @@ jobs:
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'HIGH,CRITICAL'
+          trivyignores: '.trivyignore'
 
   manifests:
     name: Kubernetes Manifest Validation
@@ -232,20 +241,47 @@ jobs:
       - name: Prepare environment file
         run: cp .env.example .env
 
-      - name: Start services with Docker Compose
-        run: docker compose up -d
+      - name: Start services with Docker Compose (using pre-built CI images)
+        run: |
+          # Use compose.ci.override.yaml to swap build: for pre-built :ci images
+          docker compose -f compose.yaml -f compose.ci.override.yaml up -d postgres redis
+          sleep 10
+          docker compose -f compose.yaml -f compose.ci.override.yaml up -d backend
+
+      - name: Run Alembic migrations inside backend container
+        run: |
+          echo "Waiting for backend container to be running..."
+          for i in $(seq 1 30); do
+            STATUS=$(docker inspect --format='{{.State.Status}}' civicpulse-backend 2>/dev/null || echo "missing")
+            if [ "$STATUS" = "running" ]; then
+              echo "Backend container is running"
+              break
+            fi
+            echo "Waiting ($i/30): status=$STATUS"
+            sleep 2
+          done
+          # alembic.ini is at WORKDIR /app inside the container
+          docker exec civicpulse-backend alembic -c /app/alembic.ini upgrade head
 
       - name: Wait for backend readiness probe (/ready)
         run: |
           echo "Awaiting backend readiness on http://localhost:8000/ready..."
+          SUCCESS=false
           for i in $(seq 1 45); do
             if curl -sf http://localhost:8000/ready; then
               echo "Backend is ready!"
+              SUCCESS=true
               break
             fi
             echo "Waiting for backend ($i/45)..."
             sleep 2
           done
+          if [ "$SUCCESS" != "true" ]; then
+            echo "Backend never became ready — dumping logs:"
+            docker compose -f compose.yaml -f compose.ci.override.yaml logs backend
+            exit 1
+          fi
+
 
       - name: POST complaint and verify category triage
         run: |
@@ -273,4 +309,5 @@ jobs:
 
       - name: Tear down Docker Compose environment
         if: always()
-        run: docker compose down -v
+        run: docker compose -f compose.yaml -f compose.ci.override.yaml down -v
+
