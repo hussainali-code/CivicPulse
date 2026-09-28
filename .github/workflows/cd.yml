@@ -50,13 +50,15 @@ jobs:
           python-version: '3.12'
 
       - name: Install backend and test dependencies
-        run: pip install -e backend/[dev]
+        run: pip install -e "backend/[dev]"
 
       - name: Run database migrations with Alembic
-        run: alembic -c backend/alembic.ini upgrade head
+        working-directory: backend
+        run: alembic upgrade head
 
       - name: Run Pytest with strict coverage check (>=65%)
-        run: pytest backend/tests/ --cov=backend/app --cov-fail-under=65
+        working-directory: backend
+        run: pytest --cov-fail-under=65
 
   build-push:
     name: Build & Push GHCR Images with Git SHA
