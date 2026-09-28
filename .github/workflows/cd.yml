@@ -1,0 +1,197 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  test:
+    name: Run Pre-Deployment Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16.3-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: civicpulse_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7.2-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres:test@localhost:5432/civicpulse_test
+      REDIS_URL: redis://localhost:6379/0
+      TRIAGE_PROVIDER: simulated
+      CORS_ORIGINS: "http://localhost:5173,http://localhost:3000"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install backend and test dependencies
+        run: pip install -e backend/[dev]
+
+      - name: Run database migrations with Alembic
+        run: alembic -c backend/alembic.ini upgrade head
+
+      - name: Run Pytest with strict coverage check (>=65%)
+        run: pytest backend/tests/ --cov=backend/app --cov-fail-under=65
+
+  build-push:
+    name: Build & Push GHCR Images with Git SHA
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      backend-digest: ${{ steps.push-backend.outputs.digest }}
+      frontend-digest: ${{ steps.push-frontend.outputs.digest }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend image
+        id: push-backend
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE=ghcr.io/$OWNER/civicpulse-backend
+          docker build backend/ \
+            -t $IMAGE:${{ github.sha }} \
+            -t $IMAGE:sha-${{ github.sha }} \
+            -t $IMAGE:latest
+          docker push $IMAGE:${{ github.sha }}
+          docker push $IMAGE:sha-${{ github.sha }}
+          docker push $IMAGE:latest
+          echo "digest=$(docker inspect --format='{{index .RepoDigests 0}}' $IMAGE:${{ github.sha }})" >> $GITHUB_OUTPUT
+
+      - name: Build and push frontend image
+        id: push-frontend
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE=ghcr.io/$OWNER/civicpulse-frontend
+          docker build frontend/ \
+            -t $IMAGE:${{ github.sha }} \
+            -t $IMAGE:sha-${{ github.sha }} \
+            -t $IMAGE:latest
+          docker push $IMAGE:${{ github.sha }}
+          docker push $IMAGE:sha-${{ github.sha }}
+          docker push $IMAGE:latest
+          echo "digest=$(docker inspect --format='{{index .RepoDigests 0}}' $IMAGE:${{ github.sha }})" >> $GITHUB_OUTPUT
+
+      - name: Generate CycloneDX SBOM with Syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          syft ghcr.io/$OWNER/civicpulse-backend:${{ github.sha }} -o cyclonedx-json > sbom-backend.json
+          syft ghcr.io/$OWNER/civicpulse-frontend:${{ github.sha }} -o cyclonedx-json > sbom-frontend.json
+
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom-*.json
+          retention-days: 14
+
+  deploy-k8s:
+    name: Deploy to Ephemeral Kubernetes Cluster
+    needs: build-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create KinD cluster
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+          kind create cluster --name civicpulse-ci
+
+      - name: Install Kustomize & Kubectl
+        run: |
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo install -o root -g root -m 0755 kustomize /usr/local/bin/kustomize
+
+      - name: Install Metrics Server on KinD
+        run: |
+          kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+          kubectl patch -n kube-system deployment metrics-server --type='json' -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+
+      - name: Create Kubernetes Secret
+        run: |
+          kubectl create namespace civicpulse
+          kubectl create secret generic civicpulse-secrets \
+            --from-literal=DB_PASSWORD="production_db_password" \
+            --from-literal=LLM_API_KEY="${{ secrets.GROQ_API_KEY || 'simulated_ci_token' }}" \
+            -n civicpulse
+
+      - name: Update Kustomize image tags to immutable SHA
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          cd k8s/overlays/prod
+          kustomize edit set image \
+            civicpulse-backend=ghcr.io/$OWNER/civicpulse-backend:${{ github.sha }} \
+            civicpulse-frontend=ghcr.io/$OWNER/civicpulse-frontend:${{ github.sha }}
+          cat kustomization.yaml
+
+      - name: Deploy manifests to cluster
+        run: |
+          kustomize build k8s/overlays/prod | kubectl apply -f -
+
+      - name: Await backend deployment rollout
+        run: |
+          kubectl rollout status deployment/backend -n civicpulse --timeout=180s
+
+      - name: Await frontend deployment rollout
+        run: |
+          kubectl rollout status deployment/frontend -n civicpulse --timeout=180s
+
+      - name: Smoke test backend health endpoints
+        run: |
+          kubectl wait --for=condition=ready pod -l app=backend -n civicpulse --timeout=90s
+          kubectl port-forward svc/backend -n civicpulse 8000:8000 &
+          sleep 4
+          curl -sf http://localhost:8000/health
+          echo "Health check passed!"
+          curl -sf http://localhost:8000/ready
+          echo "Readiness check passed!"
+
+      - name: Inspect HPA status
+        run: |
+          kubectl get hpa -n civicpulse
+          kubectl get all -n civicpulse
+
+      - name: Clean up KinD cluster
+        if: always()
+        run: kind delete cluster --name civicpulse-ci
