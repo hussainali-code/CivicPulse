@@ -1,5 +1,6 @@
 import uuid
 from unittest.mock import AsyncMock, patch
+
 import pytest
 
 from app.models import Category, Complaint, Priority, Status

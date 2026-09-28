@@ -9,8 +9,7 @@ Running multiple times is completely safe.
 """
 
 import asyncio
-import sys
-from datetime import datetime, timezone
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 

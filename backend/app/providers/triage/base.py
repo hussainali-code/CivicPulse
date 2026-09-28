@@ -1,4 +1,5 @@
 from typing import Protocol, runtime_checkable
+
 from pydantic import BaseModel, Field
 
 from app.models import Category, Priority
@@ -21,4 +22,4 @@ class TriageProvider(Protocol):
 
 from app.providers.triage.factory import get_triage_provider  # noqa: E402
 
-__all__ = ["TriageResult", "TriageProvider", "get_triage_provider"]
+__all__ = ["TriageProvider", "TriageResult", "get_triage_provider"]

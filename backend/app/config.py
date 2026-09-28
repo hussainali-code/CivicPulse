@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import List, Union
+
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = Field(default="redis://redis:6379/0")
     
     # CORS
-    ALLOWED_ORIGINS: Union[str, List[str]] = Field(
+    ALLOWED_ORIGINS: str | list[str] = Field(
         default="http://localhost,http://localhost:80,http://localhost:5173"
     )
     
@@ -35,7 +35,7 @@ class Settings(BaseSettings):
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
-    def parse_allowed_origins(cls, v: Union[str, List[str]]) -> List[str]:
+    def parse_allowed_origins(cls, v: str | list[str]) -> list[str]:
         if isinstance(v, str):
             return [origin.strip() for origin in v.split(",") if origin.strip()]
         return v
@@ -47,6 +47,6 @@ class Settings(BaseSettings):
     )
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     return Settings()

@@ -1,16 +1,18 @@
 import enum
 import uuid
 from datetime import datetime
-from typing import Optional
+
 from sqlalchemy import (
     CheckConstraint,
     DateTime,
-    Enum as SQLEnum,
     Index,
     Integer,
     String,
     desc,
     func,
+)
+from sqlalchemy import (
+    Enum as SQLEnum,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -58,7 +60,7 @@ class Complaint(Base):
         String(200),
         nullable=False
     )
-    reporter_contact: Mapped[Optional[str]] = mapped_column(
+    reporter_contact: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True
     )
@@ -75,7 +77,7 @@ class Complaint(Base):
         nullable=False,
         default=Status.OPEN
     )
-    ai_summary: Mapped[Optional[str]] = mapped_column(
+    ai_summary: Mapped[str | None] = mapped_column(
         String(140),
         nullable=True
     )
