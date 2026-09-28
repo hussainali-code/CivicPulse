@@ -1,7 +1,8 @@
 import json
 import time
 import uuid
-from typing import AsyncGenerator, Dict, List, Optional, Tuple
+from collections.abc import AsyncGenerator
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import AsyncSessionLocal
@@ -35,8 +36,8 @@ VALID_TRANSITIONS = {
 class ComplaintService:
     def __init__(
         self,
-        repo: Optional[ComplaintRepository] = None,
-        session: Optional[AsyncSession] = None,
+        repo: ComplaintRepository | None = None,
+        session: AsyncSession | None = None,
     ):
         self.repo = repo or ComplaintRepository()
         self._session = session
@@ -59,7 +60,7 @@ class ComplaintService:
         *,
         text: str,
         location: str,
-        reporter_contact: Optional[str] = None,
+        reporter_contact: str | None = None,
     ) -> Complaint:
         # Run AI triage with latency timing
         start_time = time.perf_counter()
@@ -99,12 +100,12 @@ class ComplaintService:
         self,
         session: AsyncSession,
         *,
-        category: Optional[Category] = None,
-        priority: Optional[Priority] = None,
-        status: Optional[Status] = None,
+        category: Category | None = None,
+        priority: Priority | None = None,
+        status: Status | None = None,
         page: int = 1,
         page_size: int = 20,
-    ) -> Tuple[List[Complaint], int]:
+    ) -> tuple[list[Complaint], int]:
         return await self.repo.list_filtered(
             session,
             category=category,
@@ -147,7 +148,7 @@ class ComplaintService:
         *,
         text: str,
         location: str,
-        reporter_contact: Optional[str] = None,
+        reporter_contact: str | None = None,
     ) -> Complaint:
         return await self.create_complaint(
             self._require_session(),
@@ -163,12 +164,12 @@ class ComplaintService:
     async def list_all(
         self,
         *,
-        category: Optional[Category] = None,
-        priority: Optional[Priority] = None,
-        status: Optional[Status] = None,
+        category: Category | None = None,
+        priority: Priority | None = None,
+        status: Status | None = None,
         page: int = 1,
         page_size: int = 20,
-    ) -> Tuple[List[Complaint], int]:
+    ) -> tuple[list[Complaint], int]:
         return await self.list_complaints(
             self._require_session(),
             category=category,
@@ -181,14 +182,14 @@ class ComplaintService:
     async def update_status(self, complaint_id: uuid.UUID, new_status: Status) -> Complaint:
         return await self.update_complaint_status(self._require_session(), complaint_id, new_status)
 
-    async def get_stats(self) -> Tuple[Dict[str, Dict[str, int]], str]:
+    async def get_stats(self) -> tuple[dict[str, dict[str, int]], str]:
         """Read-through cache for /api/stats. TTL 30s. X-Cache: HIT|MISS."""
         client = get_redis_client()
         cache_key = "civicpulse:stats"
         try:
             cached = await client.get(cache_key)
             if cached:
-                cached_dict: Dict[str, Dict[str, int]] = json.loads(cached)
+                cached_dict: dict[str, dict[str, int]] = json.loads(cached)
                 return cached_dict, "HIT"
         except Exception:
             pass
@@ -202,7 +203,7 @@ class ComplaintService:
 
         return stats, "MISS"
 
-    async def get_last_triage_outcomes(self, limit: int = 20) -> List[Dict[str, object]]:
+    async def get_last_triage_outcomes(self, limit: int = 20) -> list[dict[str, object]]:
         s = self._require_session()
         return await self.repo.get_last_triage_outcomes(s, limit=limit)
 

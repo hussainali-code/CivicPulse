@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Dict, List, Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models import Category, Priority, Status
@@ -19,7 +19,7 @@ class ComplaintCreate(BaseModel):
         max_length=200,
         description="Physical location or neighborhood (3-200 characters)",
     )
-    reporter_contact: Optional[str] = Field(
+    reporter_contact: str | None = Field(
         default=None,
         max_length=255,
         description="Optional contact details of the reporter",
@@ -30,11 +30,11 @@ class ComplaintResponse(BaseModel):
     id: uuid.UUID
     text: str
     location: str
-    reporter_contact: Optional[str] = None
+    reporter_contact: str | None = None
     category: Category
     priority: Priority
     status: Status
-    ai_summary: Optional[str] = None
+    ai_summary: str | None = None
     triaged_by: str
     triage_latency_ms: int
     created_at: datetime
@@ -44,7 +44,7 @@ class ComplaintResponse(BaseModel):
 
 
 class ComplaintListResponse(BaseModel):
-    items: List[ComplaintResponse]
+    items: list[ComplaintResponse]
     total: int
     page: int
     page_size: int
@@ -55,19 +55,19 @@ class StatusPatch(BaseModel):
 
 
 class StatsResponse(BaseModel):
-    by_category: Dict[str, int]
-    by_priority: Dict[str, int]
-    by_status: Dict[str, int]
-    total: Dict[str, int]
+    by_category: dict[str, int]
+    by_priority: dict[str, int]
+    by_status: dict[str, int]
+    total: dict[str, int]
 
 
 class TriageOutcomeItem(BaseModel):
     provider: str
     latency_ms: int
     fallback: bool
-    created_at: Optional[str] = None
+    created_at: str | None = None
 
 
 class ProvidersMetaResponse(BaseModel):
     active_provider: str
-    outcomes: List[TriageOutcomeItem]
+    outcomes: list[TriageOutcomeItem]

@@ -1,5 +1,5 @@
 import uuid
-from typing import Dict, List, Optional, Tuple
+
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,10 +18,10 @@ class ComplaintRepository:
         *,
         text: str,
         location: str,
-        reporter_contact: Optional[str],
+        reporter_contact: str | None,
         category: Category,
         priority: Priority,
-        ai_summary: Optional[str],
+        ai_summary: str | None,
         triaged_by: str,
         triage_latency_ms: int,
     ) -> Complaint:
@@ -46,7 +46,7 @@ class ComplaintRepository:
         self,
         session: AsyncSession,
         complaint_id: uuid.UUID
-    ) -> Optional[Complaint]:
+    ) -> Complaint | None:
         query = select(Complaint).where(Complaint.id == complaint_id)
         result = await session.execute(query)
         return result.scalar_one_or_none()
@@ -55,12 +55,12 @@ class ComplaintRepository:
         self,
         session: AsyncSession,
         *,
-        category: Optional[Category] = None,
-        priority: Optional[Priority] = None,
-        status: Optional[Status] = None,
+        category: Category | None = None,
+        priority: Priority | None = None,
+        status: Status | None = None,
         page: int = 1,
         page_size: int = 20,
-    ) -> Tuple[List[Complaint], int]:
+    ) -> tuple[list[Complaint], int]:
         # Base filter conditions
         conditions = []
         if category is not None:
@@ -104,7 +104,7 @@ class ComplaintRepository:
     async def aggregate_stats(
         self,
         session: AsyncSession
-    ) -> Dict[str, Dict[str, int]]:
+    ) -> dict[str, dict[str, int]]:
         # Count by category
         cat_query = select(Complaint.category, func.count(Complaint.id)).group_by(Complaint.category)
         cat_res = await session.execute(cat_query)
@@ -134,14 +134,14 @@ class ComplaintRepository:
         self,
         session: AsyncSession,
         limit: int = 20
-    ) -> List[Dict[str, object]]:
+    ) -> list[dict[str, object]]:
         query = (
             select(Complaint.triaged_by, Complaint.triage_latency_ms, Complaint.created_at)
             .order_by(desc(Complaint.created_at))
             .limit(limit)
         )
         result = await session.execute(query)
-        outcomes: List[Dict[str, object]] = []
+        outcomes: list[dict[str, object]] = []
         for triaged_by, latency, created_at in result.all():
             outcomes.append({
                 "provider": triaged_by,

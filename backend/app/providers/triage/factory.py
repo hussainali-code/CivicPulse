@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, cast
+from typing import cast
 
 from app.config import get_settings
 from app.providers.triage.base import TriageProvider
@@ -9,7 +9,7 @@ from app.providers.triage.simulated import SimulatedTriage
 logger = logging.getLogger("civicpulse")
 
 
-def get_triage_provider(provider_name: Optional[str] = None) -> TriageProvider:
+def get_triage_provider(provider_name: str | None = None) -> TriageProvider:
     """
     Factory function returning the configured TriageProvider implementation.
     Configured via TRIAGE_PROVIDER environment variable.

@@ -46,9 +46,17 @@ asyncio_default_fixture_loop_scope = "function"
 line-length = 100
 target-version = "py312"
 
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["E501", "B008"]
+
 [tool.mypy]
 python_version = "3.12"
-strict = true
 ignore_missing_imports = true
 mypy_path = "."
 explicit_package_bases = true
+check_untyped_defs = true
+disallow_untyped_decorators = false
+warn_redundant_casts = true
+warn_unused_ignores = false
+warn_no_return = true

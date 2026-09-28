@@ -1,5 +1,5 @@
 import uuid
-from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.models import Category, Priority, Status
@@ -50,9 +50,9 @@ async def create_complaint(
     summary="List paginated complaints with optional filtering",
 )
 async def list_complaints(
-    category: Optional[Category] = Query(default=None, description="Filter by category"),
-    priority: Optional[Priority] = Query(default=None, description="Filter by priority"),
-    complaint_status: Optional[Status] = Query(default=None, alias="status", description="Filter by status"),
+    category: Category | None = Query(default=None, description="Filter by category"),
+    priority: Priority | None = Query(default=None, description="Filter by priority"),
+    complaint_status: Status | None = Query(default=None, alias="status", description="Filter by status"),
     page: int = Query(default=1, ge=1, description="Page number"),
     page_size: int = Query(default=20, ge=1, le=100, description="Items per page (max 100)"),
     service: ComplaintService = Depends(get_complaint_service),

@@ -1,7 +1,8 @@
 import logging
 from typing import Any
-from fastapi import Depends, Request
+
 import redis.asyncio as aioredis
+from fastapi import Depends, Request
 
 from app.providers.cache import get_redis_client
 

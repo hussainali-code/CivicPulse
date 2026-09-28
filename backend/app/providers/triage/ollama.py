@@ -3,7 +3,8 @@ import hashlib
 import json
 import logging
 import random
-from typing import Any, Optional
+from typing import Any
+
 from openai import APIStatusError, APITimeoutError, AsyncOpenAI
 from pydantic import ValidationError
 
@@ -48,9 +49,9 @@ class OllamaTriage:
 
     def __init__(
         self,
-        client: Optional[AsyncOpenAI] = None,
-        redis_client: Optional[Any] = None,
-        rules_fallback: Optional[RuleBasedTriage] = None,
+        client: AsyncOpenAI | None = None,
+        redis_client: Any | None = None,
+        rules_fallback: RuleBasedTriage | None = None,
     ):
         settings = get_settings()
         base_url = f"{settings.OLLAMA_BASE_URL.rstrip('/')}/v1"
@@ -69,7 +70,7 @@ class OllamaTriage:
         return get_redis_client()
 
     def _get_cache_key(self, text: str, location: str) -> str:
-        content_hash = hashlib.sha256(f"{text}:{location}".encode("utf-8")).hexdigest()
+        content_hash = hashlib.sha256(f"{text}:{location}".encode()).hexdigest()
         return f"civicpulse:triage:{content_hash}"
 
     async def _execute_ollama_call(self, text: str, location: str) -> TriageResult:
@@ -94,12 +95,12 @@ class OllamaTriage:
             return content
 
         # Call with 1 jittered retry on 429, 5xx, or timeout
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
         for attempt in range(2):
             try:
                 raw_json = await _call()
                 return TriageResult.model_validate_json(raw_json)
-            except (asyncio.TimeoutError, APITimeoutError) as exc:
+            except (TimeoutError, APITimeoutError) as exc:
                 last_error = exc
                 if attempt == 0:
                     jitter = 0.5 + random.uniform(0.1, 0.4)

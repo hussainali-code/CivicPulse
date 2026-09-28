@@ -3,8 +3,8 @@ import logging
 import sys
 import time
 import uuid
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Awaitable, Callable, Dict, List
 
 from fastapi import FastAPI, Request, Response, status
 from fastapi.exceptions import RequestValidationError
@@ -107,7 +107,7 @@ async def json_logging_and_metrics_middleware(
     except Exception as exc:
         duration_ms = (time.perf_counter() - start_time) * 1000
         logger.error(
-            f"Unhandled exception during {request.method} {request.url.path}: {str(exc)}",
+            f"Unhandled exception during {request.method} {request.url.path}: {exc!s}",
             extra={"extra_info": {
                 "request_id": request_id,
                 "method": request.method,
@@ -154,7 +154,7 @@ async def json_logging_and_metrics_middleware(
 
 
 @app.get("/health", status_code=status.HTTP_200_OK, tags=["Monitoring"])
-async def health() -> Dict[str, str]:
+async def health() -> dict[str, str]:
     """Liveness probe: returns 200 OK without touching DB or Redis."""
     return {"status": "ok"}
 
@@ -162,7 +162,7 @@ async def health() -> Dict[str, str]:
 @app.get("/ready", tags=["Monitoring"])
 async def ready() -> Response:
     """Readiness probe: checks PostgreSQL and Redis reachability."""
-    failed: List[str] = []
+    failed: list[str] = []
 
     db_ok = await check_db_health()
     if not db_ok:
